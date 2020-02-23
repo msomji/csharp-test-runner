@@ -51,14 +51,15 @@ namespace Exercism.TestRunner.CSharp
                 if (node.DescendantNodes().Any(IsTestClass))
                     return base.VisitCompilationUnit(
                         node.WithUsings(
-                            node.Usings.Add(
+                            node.Usings
+                                .Add(
                                 UsingDirective(QualifiedName(
                                 IdentifierName("Xunit").WithLeadingTrivia(Space),
-                                IdentifierName("Abstractions"))))));
+                                IdentifierName("Abstractions"))))
+                                .Add(UsingDirective(IdentifierName("System").WithLeadingTrivia(Space)))));
 
                 return base.VisitCompilationUnit(node);
             }
-
             public override SyntaxNode VisitClassDeclaration(ClassDeclarationSyntax node)
             {
                 if (IsTestClass(node))
@@ -67,70 +68,55 @@ namespace Exercism.TestRunner.CSharp
                                 BaseList(
                                     SingletonSeparatedList<BaseTypeSyntax>(
                                         SimpleBaseType(
-                                            IdentifierName("TracingTestBase")))))
-                            .WithMembers(node.Members.Insert(0, ConstructorDeclaration(
-                                    Identifier(node.Identifier.Text))
-                                .WithModifiers(
-                                    TokenList(
-                                        Token(SyntaxKind.PublicKeyword).WithTrailingTrivia(Space)))
-                                .WithParameterList(
-                                    ParameterList(
-                                        SingletonSeparatedList<ParameterSyntax>(
-                                            Parameter(
-                                                    Identifier("output"))
-                                                .WithType(
-                                                    IdentifierName("ITestOutputHelper").WithTrailingTrivia(Space)))))
-                                .WithInitializer(
-                                    ConstructorInitializer(
-                                        SyntaxKind.BaseConstructorInitializer,
-                                        ArgumentList(
-                                            SingletonSeparatedList<ArgumentSyntax>(
-                                                Argument(
-                                                    IdentifierName("output"))))))
-                                .WithBody(
-                                    Block()))));
+                                            IdentifierName("IDisposable")))))
+                            .WithMembers(
+                                node.Members
+                                    .Insert(0, MethodDeclaration(
+                                            PredefinedType(
+                                                Token(SyntaxKind.VoidKeyword).WithTrailingTrivia(Space)),
+                                            Identifier("Dispose"))
+                                        .WithModifiers(
+                                            TokenList(
+                                                Token(SyntaxKind.PublicKeyword).WithTrailingTrivia(Space)))
+                                        .WithBody(
+                                            Block(
+                                                SingletonList<StatementSyntax>(
+                                                    ExpressionStatement(
+                                                        InvocationExpression(
+                                                            MemberAccessExpression(
+                                                                SyntaxKind.SimpleMemberAccessExpression,
+                                                                IdentifierName("XunitContext"),
+                                                                IdentifierName("Flush"))))))))
+                                    .Insert(0, 
+                                    ConstructorDeclaration(
+                                            Identifier("XunitLoggerSample").WithTrailingTrivia(Space))
+                                        .WithModifiers(
+                                            TokenList(
+                                                Token(SyntaxKind.PublicKeyword).WithTrailingTrivia(Space)))
+                                        .WithParameterList(
+                                            ParameterList(
+                                                SingletonSeparatedList<ParameterSyntax>(
+                                                    Parameter(
+                                                            Identifier("testOutput"))
+                                                        .WithType(
+                                                            IdentifierName("ITestOutputHelper").WithTrailingTrivia(Space)))))
+                                        .WithBody(
+                                            Block(
+                                                SingletonList<StatementSyntax>(
+                                                    ExpressionStatement(
+                                                        InvocationExpression(
+                                                                MemberAccessExpression(
+                                                                    SyntaxKind.SimpleMemberAccessExpression,
+                                                                    IdentifierName("XunitContext"),
+                                                                    IdentifierName("Register")))
+                                                            .WithArgumentList(
+                                                                ArgumentList(
+                                                                    SingletonSeparatedList<ArgumentSyntax>(
+                                                                        Argument(
+                                                                            IdentifierName("testOutput")))))))))))
+                                    );
 
                 return base.VisitClassDeclaration(node);
-            }
-
-            public override SyntaxNode VisitInvocationExpression(InvocationExpressionSyntax node)
-            {
-                if (node.Expression is MemberAccessExpressionSyntax memberAccessExpression)
-                {
-                    var memberAccess = memberAccessExpression.WithoutTrivia().ToFullString();
-
-                    if (memberAccess.EndsWith("Console.Write") ||
-                        memberAccess.EndsWith("Console.Error.Write") ||
-                        memberAccess.EndsWith("Console.Out.Write"))
-                        return node.WithExpression(
-                            MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                    MemberAccessExpression(
-                                        SyntaxKind.SimpleMemberAccessExpression,
-                                        IdentifierName("System"),
-                                        IdentifierName("Diagnostics")),
-                                    IdentifierName("Trace")),
-                                IdentifierName("Write")));
-
-                    if (memberAccess.EndsWith("Console.WriteLine") ||
-                        memberAccess.EndsWith("Console.Error.WriteLine") ||
-                        memberAccess.EndsWith("Console.Out.WriteLine"))
-                        return node.WithExpression(
-                            MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                    MemberAccessExpression(
-                                        SyntaxKind.SimpleMemberAccessExpression,
-                                        IdentifierName("System"),
-                                        IdentifierName("Diagnostics")),
-                                    IdentifierName("Trace")),
-                                IdentifierName("WriteLine")));
-                }
-
-                return base.VisitInvocationExpression(node);
             }
 
             private static bool IsTestClass(SyntaxNode descendant) =>

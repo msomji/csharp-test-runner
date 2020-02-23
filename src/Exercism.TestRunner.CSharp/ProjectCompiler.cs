@@ -18,8 +18,6 @@ namespace Exercism.TestRunner.CSharp
             var project = await workspace.OpenProjectAsync(GetProjectPath(options));
 
             return await project
-                .AddAdditionalFile("TracingTestBase.cs")
-                .AddAdditionalFile("TestOutputTraceListener.cs")
                 .WithMetadataReferences(GetMetadataReferences())
                 .WithCompilationOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
                 .GetCompilationAsync();
@@ -27,9 +25,6 @@ namespace Exercism.TestRunner.CSharp
 
         private static string GetProjectPath(Options options) =>
             Path.Combine(options.InputDirectory, $"{options.Slug.Dehumanize().Pascalize()}.csproj");
-
-        private static Project AddAdditionalFile(this Project project, string fileName) =>
-            project.AddDocument(fileName, AdditionalFile.Read(fileName)).Project;
 
         private static IEnumerable<PortableExecutableReference> GetMetadataReferences() =>
             AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")
